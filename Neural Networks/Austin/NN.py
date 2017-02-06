@@ -115,6 +115,58 @@ class Network(object):
 		test_results = [(numpy.argmax(self.feedforward(x)), y)
 		                for (x, y) in test_data]
 		return sum(int(x == y) for (x, y) in test_results)
+	
+	def save_weights(self, file_name):
+		save = open(file_name, 'w')
+		save.write(str(self.sizes[0]))
+		for x in xrange(len(self.sizes)-1):
+			save.write(",")
+			save.write(str(self.sizes[x+1]))
+		save.write("\n")
+		
+		for x in xrange(self.m-1):
+			save.write(" ")
+			for y in xrange(len(self.w[x])):
+				for z in xrange(len(self.w[x][y])):
+					save.write(str(self.w[x][y][z]))
+					save.write(",")
+				save.write("|")
+		save.write("\n")
+		
+		for x in xrange(self.m-1):
+			save.write(" ")
+			for y in xrange(len(self.b[x])):
+				save.write(str(self.b[x][y][0]))
+				save.write(",")
+		save.close()
+		return
+		
+	def load_weights(self, file_name):
+		load = open(file_name, 'r')
+		File = load.read()
+		data = File.split("\n")
+		init = data[0]
+		weights = data[1].split(" ")
+		bias = data[2].split(" ")
+		weights.remove('')
+		bias.remove('')
+		
+		#init
+		
+		#load weights:
+		for x in xrange(self.m-1):
+			w = weights[x].split("|")
+			for y in xrange(len(self.w[x])):
+				w1 = w[y].split(",")
+				for z in xrange(len(self.w[x][y])):
+					self.w[x][y][z] = float(w1[z])
+	
+		#load bias:
+		for x in xrange(self.m-1):
+			b = bias[x].split(",")
+			for y in xrange(len(self.b[x])):
+				self.b[x][y][0] = b[y]
+		return
 
  
 
@@ -125,8 +177,10 @@ mnist_loader.load_data_wrapper()
 print "loaded"
                         
 net = Network([784, 30, 10])
-net.train_SGD(training_data, 30, 10, 3.0, test_data=test_data)
-print "finished"
-	
-	
+net.load_weights("characters.txt")
+#net.train_SGD(training_data, 30, 10, 3.0, test_data=test_data)
+#net.save_weights("characters.txt")
 
+print "testing data..."
+print "Epoch 0: {0}/{1}".format(net.evaluate(test_data), len(test_data))
+print "finished"
