@@ -1,6 +1,7 @@
 
 import numpy
 import time
+import copy
 from numpy import exp, array, random, dot
 
 
@@ -13,12 +14,7 @@ class Network(object):
 		self.sizes = sizes
 		self.b = [random.randn(y, 1) for y in sizes[1:]]
 		self.w = [random.randn(y, x) for x, y in zip(sizes[:-1], sizes[1:])]
-
-	def feedforward(self,X):
-		#begin trainning set by getting the calculated output
-		for b,w in zip(self.b, self.w):
-			X = self.sig(dot(w,X)+b)
-		return X 
+		
 	def sig(self,z):
 		return 1.0/(1.0+exp(-z))
 
@@ -26,10 +22,12 @@ class Network(object):
 		return self.sig(z)*(1-self.sig(z))
 
 	def feedforward(self,X):
-		#begin trainning set by getting the calculated output
 		for b,w in zip(self.b, self.w):
 			X = self.sig(dot(w,X)+b)
 		return X
+		
+	def cost_functions(self, i):
+		return i
 	
 	def partial_derivatives(self, X, a):   #X is input, a is desired output
 		#Db = partials with respect to bias
@@ -71,13 +69,11 @@ class Network(object):
 			l = self.m - 3 - i  #at i = 0, i is the second to last layer
 			
 			sig_p = self.sig_prime(zs[l])
-	
+			
 			Dzl = dot(self.w[l+1].transpose(), Dzl)
 			Dzl = sig_p*Dzl
 			Db[l] = Dzl
 
-			#print activations[l].shape
-			#print Dzl.shape
 			Dw[l] = (dot(Dzl,activations[l].transpose()))
 
 		#add ajustments to the layers
@@ -88,13 +84,16 @@ class Network(object):
 		
 	def train_SGD(self, training_data, epocks, mini_batch_size, step_size, test_data=None):
 		#train using stochastic gradient descent.
-
+		
+		accy = 0
+		
 		#number of training_data and test data
 		if test_data: n_test = len(test_data)
 		n = len(training_data)
 		self.step = step_size/mini_batch_size
 
 		for i in xrange(epocks):
+			st= time.time()
 			#by shuffling the training data, we get a random set of sets from the first 
 			#mini_batch_size elements
 			random.shuffle(training_data)
@@ -104,10 +103,13 @@ class Network(object):
 					self.partial_derivatives(x,y)
 			if test_data:
 				print "testing data..."
-				print "Epoch {0}: {1}/{2}".format(i, self.evaluate(test_data), n_test)
+				eva = self.evaluate(test_data)
+				if (eva > accy):
+					self.save_weights("auto_save.txt")
+					accy = eva
+				print "Epoch {0}: {1}/{2}".format(i, eva, n_test)
 			else:
 				print "Epoch {0} complete".format(i)
-
 		return  
 		
 	def evaluate(self, test_data):
@@ -175,12 +177,14 @@ print "loading..."
 training_data, validation_data, test_data = \
 mnist_loader.load_data_wrapper()
 print "loaded"
-                        
+                    
 net = Network([784, 30, 10])
-net.load_weights("characters.txt")
-#net.train_SGD(training_data, 30, 10, 3.0, test_data=test_data)
-#net.save_weights("characters.txt")
+#net.load_weights("auto_save.txt")
+net.train_SGD(training_data, 30, 10, 3.0, test_data=test_data)
+#net.save_weights("characters2.txt")
 
 print "testing data..."
 print "Epoch 0: {0}/{1}".format(net.evaluate(test_data), len(test_data))
 print "finished"
+	
+	
