@@ -8,6 +8,9 @@ from Activation import *
 class Network(object):
 
 	step = 3.0
+	lamb = 5.0
+	n = -1
+	mini_batch_size = -1
 	
 	def __init__(self, sizes):
 		self.m = len(sizes)
@@ -61,7 +64,7 @@ class Network(object):
 		#da = (a - activations[-1])#/self.sig_prime(zs[-1])
 		
 		#dC/zL = DzL  partial of the last layer
-		DzL = self.cost.df(a,activations[-1],zs[-1])				#da*self.sig_prime(zs[-1])
+		DzL = -1*self.cost.df(a,activations[-1],zs[-1])				#da*self.sig_prime(zs[-1])
 		
 		Db[-1] = DzL
 		
@@ -84,12 +87,12 @@ class Network(object):
 			Dw[l] = (dot(Dzl,activations[l].transpose()))
 
 		#add ajustments to the layers
- 		for x in xrange(len(self.w)):
- 			self.w[x] += self.step*Dw[x]
- 			self.b[x] += self.step*Db[x]
-		return
+ 		#for x in xrange(len(self.w)):
+ 		#	self.w[x] = (-self.step/self.mini_batch_size)*Dw[x] + (1 - (self.step/self.n)*self.lamb)*self.w[x]
+ 		#	self.b[x] -= self.step*Db[x]
+		return (Dw, Db)
 		
-	def train_SGD(self, training_data, epocks, mini_batch_size, step_size, test_data=None):
+	def train_SGD(self, training_data, epocks, mini_batch_size, step_size, lmbda, test_data=None):
 		#train using stochastic gradient descent.	
 		
 		accy = 0
@@ -97,7 +100,10 @@ class Network(object):
 		#number of training_data and test data
 		if test_data: n_test = len(test_data)
 		n = len(training_data)
-		self.step = step_size/mini_batch_size
+		self.n = n
+		self.step = step_size
+		self.mini_batch_size = mini_batch_size
+		self.lamb = lmbda
 
 		for i in xrange(epocks):
 			st= time.time()
@@ -106,8 +112,15 @@ class Network(object):
 			random.shuffle(training_data)
 			mini_batches = [training_data[k:k+mini_batch_size] for k in xrange(0, n, mini_batch_size)]
 			for mini_batch in mini_batches:
+				Dw_sum = [numpy.zeros(w.shape) for w in self.w]
+				Db_sum = [numpy.zeros(b.shape) for b in self.b]
 				for x, y in mini_batch:
-					self.partial_derivatives(x,y)
+					Dw, Db = self.partial_derivatives(x,y)
+					Dw_sum = [dw_s + dw for dw_s, dw in zip(Dw_sum, Dw)]
+					Db_sum = [db_s + db for db_s, db in zip(Db_sum, Db)]
+				self.w = [(1-step_size*(lmbda/n))*w - (step_size/mini_batch_size)*nw for w, nw in zip(self.w, Dw_sum)]
+				self.b = [b-(step_size/mini_batch_size)*nb for b, nb in zip(self.b, Db_sum)]
+
 			if test_data:
 				print "testing data..."
 				eva = self.evaluate(test_data)
@@ -189,7 +202,7 @@ net = Network([784, 30, 10])
 net.setActivation(0)
 net.setCost(1)
 #net.load_weights("auto_save.txt")
-net.train_SGD(training_data, 30, 10, 3.0, test_data=test_data)
+net.train_SGD(training_data, 30, 10, 0.5, 5.0, test_data=test_data)
 #net.save_weights("characters2.txt")
 
 net.load_weights("auto_save.txt")
