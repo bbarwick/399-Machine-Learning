@@ -66,8 +66,8 @@ class Network(object):
 			activations.append(activation)
 
 		#alternate output layer:
-			if self.alt_out:
-				activations[-1] = self.alt_act.f(zs[-1])
+		if self.alt_out:
+			activations[-1] = self.alt_act.f(zs[-1])
 
 		#first we have to find the last layer's partials
 		#using Cost function 1/2n||y(x) - a||^2
