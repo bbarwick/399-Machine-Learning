@@ -6,11 +6,8 @@ from Cost import *
 from Activation import *
 
 class Network(object):
-
-	step = 3.0
-	lamb = 5.0
-	n = -1
-	mini_batch_size = -1
+	
+	alt_out = False
 	
 	def __init__(self, sizes):
 		self.m = len(sizes)
@@ -20,23 +17,36 @@ class Network(object):
 		
 		#set default activation and cost function
 		self.activation = sigmoid
+		self.alt_act = sigmoid
 		self.cost = quadratic_cost(sigmoid)
 		
-	def setActivation(self, i):
-		if i == 0:
-			self.activation = sigmoid
+	def setActivation(self, act):
+		self.activation = act
 		return
 	
-	def setCost(self, i):
-		if i == 1:
-			self.cost = cross_enthropy_cost(self.activation)
-		else:
-			self.cost = quadratic_cost(self.activation)
+	def setCost(self, cost):
+		self.cost = cost(self.activation)
+		return
+		
+	def alt_output(self,act):
+		self.alt_out = True
+		self.alt_act = act
+		return
 	
 	def feedforward(self,X):
-		for b,w in zip(self.b, self.w):
-			X = self.activation.f(dot(w,X)+b)
-		return X
+		activation = X
+		activations = [X] # list to store all the activations, layer by layer
+		zs = [] # list to store all the z vectors, layer by layer
+		for b, w in zip(self.b, self.w):
+			z = dot(w, activation)+b
+			zs.append(z)
+			activation = self.activation.f(z)
+			activations.append(activation)
+
+		#alternate output layer:
+		if self.alt_out:
+			activations[-1] = self.alt_act.f(zs[-1])
+		return activations[-1]
 	
 	def partial_derivatives(self, X, a):   #X is input, a is desired output
 		#Db = partials with respect to bias
@@ -54,6 +64,10 @@ class Network(object):
 			zs.append(z)
 			activation = self.activation.f(z)
 			activations.append(activation)
+
+		#alternate output layer:
+			if self.alt_out:
+				activations[-1] = self.alt_act.f(zs[-1])
 
 		#first we have to find the last layer's partials
 		#using Cost function 1/2n||y(x) - a||^2
@@ -85,11 +99,6 @@ class Network(object):
 			Db[l] = Dzl
 
 			Dw[l] = (dot(Dzl,activations[l].transpose()))
-
-		#add ajustments to the layers
- 		#for x in xrange(len(self.w)):
- 		#	self.w[x] = (-self.step/self.mini_batch_size)*Dw[x] + (1 - (self.step/self.n)*self.lamb)*self.w[x]
- 		#	self.b[x] -= self.step*Db[x]
 		return (Dw, Db)
 		
 	def train_SGD(self, training_data, epocks, mini_batch_size, step_size, lmbda, test_data=None):
@@ -190,17 +199,18 @@ class Network(object):
 				self.b[x][y][0] = b[y]
 		return
 
- 
+
 
 import mnist_loader
 print "loading..."
 training_data, validation_data, test_data = \
 mnist_loader.load_data_wrapper()
 print "loaded"
-                    
+
 net = Network([784, 30, 10])
-net.setActivation(0)
-net.setCost(1)
+net.setActivation(sigmoid)
+net.setCost(log_likelyhood_cost)
+net.alt_output(softmax)
 #net.load_weights("auto_save.txt")
 net.train_SGD(training_data, 30, 10, 0.5, 5.0, test_data=test_data)
 #net.save_weights("characters2.txt")

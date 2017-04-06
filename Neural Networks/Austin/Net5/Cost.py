@@ -34,11 +34,14 @@ class cross_enthropy_cost(Cost):
 	def df(self,a,y,z):
 		return (a-y)
 		
-#class log_likelyhood(Cost):
-#	@staticmethod
-#	def f(a,y):
-#		return -log(a)
-#	
-#	@staticmethod
-#	def df(a,y,z):
-#		return
+class log_likelyhood_cost(Cost):
+	def __init__(self,act):
+		self.activation = act
+		
+	@staticmethod
+	def f(a,y):
+		return -log(a)
+	
+	@staticmethod
+	def df(a,y,z):
+		return (a-y)
